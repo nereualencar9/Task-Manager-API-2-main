@@ -1,6 +1,6 @@
 import { sqliteConnection } from "../databases";
-import { TaskDataCreate } from "../services/taskServices";
-import { TaskDataTypes } from "../validations/taskSchema";
+import { AppError } from "../errors/appError";
+import { TaskDataCreate, UserTaskPagination } from "../services/taskServices";
 
 export type CreateTaskDataType = TaskDataCreate & { id: string };
 export type UpdateTaskDataType = CreateTaskDataType & { update_at: Date };
@@ -39,6 +39,69 @@ export const taskRepository = {
       const task = await db.get(query, id);
 
       return task;
+    } catch (error) {
+      throw error;
+    }
+  },
+
+  async getTasks({ userID, limit, offset, filter }: UserTaskPagination) {
+    try {
+      const db = await sqliteConnection();
+      let querySQL = "";
+      let tasks = [];
+
+      switch (filter) {
+        case "all":
+          querySQL = `
+            SELET * FROM tasks 
+            WHERE user_id = ?
+            ORDER BY created_at DESC 
+            LIMIT ? OFFSET ?;
+          `;
+
+          tasks = await db.all(querySQL, [userID, limit, offset]);
+
+          break;
+
+        case "completed":
+          querySQL = `
+            SELET * FROM tasks 
+            WHERE user_id = ? AND status = 'completed'
+            ORDER BY created_at DESC 
+            LIMIT ? OFFSET ?;
+          `;
+
+          tasks = await db.all(querySQL, [userID, limit, offset]);
+
+          break;
+
+        case "pending":
+          querySQL = `
+              SELET * FROM tasks 
+              WHERE user_id = ? AND status = 'pending' AND date >= CURRENT_DATE
+              ORDER BY created_at DESC 
+              LIMIT ? OFFSET ?;
+          `;
+
+          tasks = await db.all(querySQL, [userID, limit, offset]);
+
+          break;
+
+        case "late":
+          querySQL = `
+                SELET * FROM tasks 
+                WHERE user_id = ? AND status = 'pending' AND date < CURRENT_DATE
+                ORDER BY created_at DESC 
+                LIMIT ? OFFSET ?;
+            `;
+
+          tasks = await db.all(querySQL, [userID, limit, offset]);
+
+          break;
+
+        default:
+          throw new AppError("invalid filter", 400);
+      }
     } catch (error) {
       throw error;
     }
