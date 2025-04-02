@@ -7,18 +7,18 @@ import {
 } from "../repositories/taskRepository";
 import { PaginationDataTypes } from "../validations/paginationSchema";
 
-export type TaskDataCreate = TaskDataTypes & { user_id: string; id: string };
+export type TaskDataCreate = TaskDataTypes & { user_id: string };
 export type UserTaskPagination = PaginationDataTypes & { userID: string };
 
 export type TaskRepositoryTypes = {
-  createTask(data: TaskDataCreate): Promise<TaskDataTypes | undefined>;
+  createTask(data: TaskDataCreate): Promise<CreateTaskDataType | undefined>;
   getTaskByID(id: string): Promise<Partial<CreateTaskDataType> | undefined>;
   getTasks(data: UserTaskPagination): Promise<CreateTaskDataType[] | undefined>;
   updateTask(data: UpdateTaskDataType): Promise<UpdateTaskDataType | undefined>;
   deleteTaskByID(id: string): Promise<{ id: string } | undefined>;
 };
 
-export const userServices = {
+export const taskServices = {
   async create(
     { title, description, date, status, user_id }: TaskDataCreate,
     repository: TaskRepositoryTypes
@@ -28,14 +28,16 @@ export const userServices = {
         throw new AppError("date cannot be before the current time", 400);
       }
 
-      const taskCreated = await repository.createTask({
+      const task = {
         id: randomUUID(),
         title,
         description,
         date,
         status: status || "pending",
         user_id,
-      });
+      };
+
+      const taskCreated = await repository.createTask(task);
 
       return taskCreated;
     } catch (error) {
